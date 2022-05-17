@@ -98,11 +98,11 @@ weight_distanceUdf = F.udf(weigted_distance,T.DoubleType())
 distance_res = join_df2.withColumn('weighted_distance',weight_distanceUdf('poi_lat','poi_long','home_lat','home_long','people_number'))
 
 
-res_df = distance_res.select('date','poi_cbg','people_number','distance','weighted_distance')
+res_df = distance_res.select('date','poi_cbg','people_number','weighted_distance')
 
 grouped_df = res_df.groupby('date','poi_cbg').agg(
     F.sum('people_number'),
-    F.avg('distance').alias('distance'),
+    
     (F.sum('weighted_distance')/F.sum('people_number')).alias('weighted_distance')
 )
 df_pivot_res = grouped_df.groupBy("poi_cbg").pivot('date').sum('weighted_distance').sort('poi_cbg').rdd.saveAsTextFile(sys.argv[1])
