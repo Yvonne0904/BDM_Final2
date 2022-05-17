@@ -26,6 +26,7 @@ df_pattern = spark.read.option("header","true").option("escape", "\"").csv("/tmp
 df_cbg = pd.read_csv("nyc_cbg_centroids.csv")
 df_cbg = spark.createDataFrame(df_cbg)
 
+#Filter the palce
 placeList = df_supermarket.select("safegraph_placekey").rdd.flatMap(lambda x: x).collect()
 df_pattern = df_pattern.filter(F.col("placekey").isin(placeList))
 
@@ -76,12 +77,12 @@ join_df1 = df_pattern5.join(df_cbg,F.col('poi_cbg')==F.col('cbg_fips'),'inner')\
 join_df2 = join_df1.join(df_cbg,F.col('home_key')==F.col('cbg_fips'),'inner')\
 .select(['date','poi_cbg','home_key','people_number','poi_lat','poi_long','latitude','longitude']).withColumnRenamed('latitude','home_lat').withColumnRenamed('longitude','home_long')
 
-def cal_distance(col1,col2,col3,col4):
+'''def cal_distance(col1,col2,col3,col4):
   t = Transformer.from_crs(4326, 2263)
   tuple1 = t.transform(col1,col2)
   tuple2 = t.transform(col3,col4)
   distance = Point(tuple1).distance(Point(tuple2))/5280
-  return distance
+  return distance'''
 
 def weigted_distance(col1,col2,col3,col4,col5):
   t = Transformer.from_crs(4326, 2263)
@@ -91,10 +92,11 @@ def weigted_distance(col1,col2,col3,col4,col5):
   
   return weighted_distance
 
-distanceUdf = F.udf(cal_distance,T.DoubleType())
+#distanceUdf = F.udf(cal_distance,T.DoubleType())
 weight_distanceUdf = F.udf(weigted_distance,T.DoubleType())
-distance_res = join_df2.withColumn('distance',distanceUdf('poi_lat','poi_long','home_lat','home_long')).withColumn('weighted_distance',weight_distanceUdf('poi_lat','poi_long','home_lat','home_long','people_number'))
-distance_res.show()
+#distance_res = join_df2.withColumn('distance',distanceUdf('poi_lat','poi_long','home_lat','home_long')).withColumn('weighted_distance',weight_distanceUdf('poi_lat','poi_long','home_lat','home_long','people_number'))
+distance_res = join_df2.withColumn('weighted_distance',weight_distanceUdf('poi_lat','poi_long','home_lat','home_long','people_number'))
+
 
 res_df = distance_res.select('date','poi_cbg','people_number','distance','weighted_distance')
 
